@@ -2,4 +2,6 @@
 !.gitignore
 !.nvmrc
 
+!.github
+
 node_modules/
