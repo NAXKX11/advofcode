@@ -1,5 +1,6 @@
 {
   "name": "advent-of-code",
+  "private": true,
   "version": "0.0.0-development",
   "type": "module",
   "engines": {
