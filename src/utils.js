@@ -57,3 +57,19 @@ module.exports.intersect = function intersect(...args) {
 module.exports.manhatten = function manhatten([x0, y0], [x1, y1]) {
   return Math.abs(x1 - x0) + Math.abs(y1 - y0);
 };
+
+module.exports.permutations = function permutations(input) {
+  if (input.length === 0) {
+    return [[]];
+  }
+
+  return input.reduce(
+    (rows, value, i) => [
+      ...rows,
+      ...module.exports
+        .permutations([...input.slice(0, i), ...input.slice(i + 1)])
+        .map(x => [value, ...x])
+    ],
+    []
+  );
+};
