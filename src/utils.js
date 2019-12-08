@@ -33,9 +33,21 @@ module.exports.range = function range(n, offset = 0) {
 };
 
 function intersectBetween(a, b) {
-  const [left, right] = [a, b].sort((a, b) => a.length - b.length);
+  const [left, right] = [a, b].sort((a, b) => Math.sign(a.length - b.length));
 
-  return left.filter(element => right.includes(element));
+  const can_use_hash_hack = ["string", "number"].includes(typeof right[0]);
+  const right_hash = can_use_hash_hack
+    ? right.reduce(
+        (acc, current) => Object.assign(acc, { [current]: true }),
+        {}
+      )
+    : right;
+
+  return left.filter(
+    can_use_hash_hack
+      ? element => right_hash[element] !== undefined
+      : element => right.includes(element)
+  );
 }
 
 module.exports.intersect = function intersect(...args) {
@@ -78,4 +90,28 @@ module.exports.chunk = function chunk(array, n) {
   return module.exports.range(Math.ceil(array.length / n)).map((x, i) => {
     return array.slice(i * n, i * n + n);
   });
+};
+
+module.exports.perfLogs = function withPerfLogs(cb, message) {
+  const start = Date.now();
+  console.log({}, `[PERF]: [ START]: ${message}`);
+
+  try {
+    const result = cb();
+
+    const end = Date.now();
+    console.log(
+      { duration: `${end - start}ms` },
+      `[PERF]: [FINISH]: ${message}`
+    );
+    return result;
+  } catch (err) {
+    const end = Date.now();
+    console.log(
+      { duration: `${end - start}ms` },
+      `[PERF]: [FINISH]: ${message} (with error)`
+    );
+
+    throw err;
+  }
 };

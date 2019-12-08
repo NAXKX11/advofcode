@@ -19,8 +19,7 @@ describe("Part 1", () => {
   });
 
   // Actual test, Part 1
-  // Skipped because.... too slow :D
-  it.skip("should produce the correct value for the input data", async () => {
+  it("should produce the correct value for the input data", async () => {
     const data = await read(__dirname, "./data.txt");
 
     expect(part1(data)).toMatchSnapshot();
@@ -43,8 +42,7 @@ describe("Part 2", () => {
   });
 
   // Actual test, Part 2
-  // Skipped because.... too slow :D
-  it.skip("should produce the correct value for the input data", async () => {
+  it("should produce the correct value for the input data", async () => {
     const data = await read(__dirname, "./data.txt");
 
     expect(part2(data)).toMatchSnapshot();
