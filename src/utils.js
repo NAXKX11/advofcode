@@ -73,3 +73,9 @@ module.exports.permutations = function permutations(input) {
     []
   );
 };
+
+module.exports.chunk = function chunk(array, n) {
+  return module.exports.range(Math.ceil(array.length / n)).map((x, i) => {
+    return array.slice(i * n, i * n + n);
+  });
+};
