@@ -1,11 +1,11 @@
 // Day 9: Sensor Boost
-
+const EventEmitter = require("events");
 const { match, abort, aborted } = require("../utils");
 
 const PARAMETER_MODES = {
-  POSITION_MODE: 0,
-  IMMEDIATE_MODE: 1,
-  RELATIVE_MODE: 2
+  POSITION: 0,
+  IMMEDIATE: 1,
+  RELATIVE: 2
 };
 
 const PROGRAM_MODES = {
@@ -27,57 +27,48 @@ const CODES = {
   ADJUST_RELATIVE_BASE: 9
 };
 
+const IO = {
+  IN: "input",
+  OUT: "output"
+};
+
 class Halt extends Error {}
 
 function createIntcodeComputer(program = "", debug_options = {}) {
   const { mode = PROGRAM_MODES.OUTPUT } = debug_options;
   const memory = program.split(",").map(Number);
 
+  const emitter = new EventEmitter();
+
   const input = [];
+  emitter.on(IO.IN, values => input.push(...values));
+
   const output = [];
+  emitter.on(IO.OUT, value => output.push(value));
 
-  const output_channels = [];
-  let pending_input = { resolve: () => {} };
-
-  function readInput() {
-    if (input.length > 0) {
-      return input.shift();
-    }
-
-    return new Promise(resolve => {
-      pending_input.resolve = resolve;
-    }).then(readInput);
+  async function readInput() {
+    return input.length > 0
+      ? input.shift()
+      : new Promise(emitter.once.bind(IO.IN)).then(readInput);
   }
 
   let instruction_pointer = 0;
-  let relative_pointer = 0;
+  let relative_base_pointer = 0;
   async function IntcodeComputer() {
     try {
       while (instruction_pointer < memory.length) {
         const { operation, readParam, write, advance } = parseOperator(
           memory,
           instruction_pointer,
-          relative_pointer
+          relative_base_pointer
         );
 
         const next_position = await match(operation, {
-          [CODES.HALT]() {
-            abort();
-          },
-          [CODES.ADDITION]() {
-            write(readParam() + readParam());
-          },
-          [CODES.MULTIPLICATION]() {
-            write(readParam() * readParam());
-          },
-          async [CODES.READ]() {
-            write(await readInput());
-          },
-          [CODES.WRITE]() {
-            const value = readParam();
-            output.push(value);
-            output_channels.forEach(channel => channel(value));
-          },
+          [CODES.HALT]: () => abort(),
+          [CODES.ADDITION]: () => write(readParam() + readParam()),
+          [CODES.MULTIPLICATION]: () => write(readParam() * readParam()),
+          [CODES.READ]: () => readInput().then(write),
+          [CODES.WRITE]: () => void emitter.emit(IO.OUT, readParam()),
           [CODES.JUMP_IF_TRUE]() {
             const param1 = readParam();
             const param2 = readParam();
@@ -94,14 +85,10 @@ function createIntcodeComputer(program = "", debug_options = {}) {
               return param2; // Returning the new position
             }
           },
-          [CODES.LESS_THAN]() {
-            write(readParam() < readParam() ? 1 : 0);
-          },
-          [CODES.EQUALS]() {
-            write(readParam() === readParam() ? 1 : 0);
-          },
+          [CODES.LESS_THAN]: () => write(readParam() < readParam() ? 1 : 0),
+          [CODES.EQUALS]: () => write(readParam() === readParam() ? 1 : 0),
           [CODES.ADJUST_RELATIVE_BASE]() {
-            relative_pointer += readParam();
+            relative_base_pointer += readParam();
           }
         });
 
@@ -129,11 +116,11 @@ function createIntcodeComputer(program = "", debug_options = {}) {
       return IntcodeComputer();
     },
     input(...values) {
-      input.push(...values);
-      pending_input.resolve();
+      emitter.emit(IO.IN, [].concat(values).filter(Boolean));
     },
     output(cb) {
-      output_channels.push(cb);
+      emitter.on(IO.OUT, cb);
+      return () => emitter.off(IO.OUT);
     }
   };
 }
@@ -155,52 +142,30 @@ function parseOperator(memory, instruction_pointer = 0, relative_pointer = 0) {
   // our parameters
   let local_instruction_pointer = instruction_pointer;
 
+  function resolvePosition() {
+    const position = ++local_instruction_pointer;
+
+    // Get the position from memory based on the PARAMETER_MODE
+    return match(
+      param_modes.length > 0 ? param_modes.shift() : PARAMETER_MODES.POSITION,
+      {
+        [PARAMETER_MODES.POSITION]: () => memory[position],
+        [PARAMETER_MODES.IMMEDIATE]: () => position,
+        [PARAMETER_MODES.RELATIVE]: () => memory[position] + relative_pointer
+      }
+    );
+  }
+
   return {
     // Expose the operation
     operation,
 
     // Expose a set of utils
     readParam() {
-      const position = ++local_instruction_pointer;
-
-      // Get the param value from memory based on the PARAMETER_MODE
-      return match(
-        param_modes.length > 0
-          ? param_modes.shift()
-          : PARAMETER_MODES.POSITION_MODE,
-        {
-          [PARAMETER_MODES.POSITION_MODE]() {
-            return memory[memory[position]];
-          },
-          [PARAMETER_MODES.IMMEDIATE_MODE]() {
-            return memory[position];
-          },
-          [PARAMETER_MODES.RELATIVE_MODE]() {
-            return memory[memory[position] + relative_pointer];
-          }
-        }
-      );
+      return memory[resolvePosition()];
     },
     write(value) {
-      const position = ++local_instruction_pointer;
-
-      // Set the value in memory based on the PARAMETER_MODE
-      match(
-        param_modes.length > 0
-          ? param_modes.shift()
-          : PARAMETER_MODES.POSITION_MODE,
-        {
-          [PARAMETER_MODES.POSITION_MODE]() {
-            memory[memory[position]] = value;
-          },
-          [PARAMETER_MODES.IMMEDIATE_MODE]() {
-            memory[position] = value;
-          },
-          [PARAMETER_MODES.RELATIVE_MODE]() {
-            memory[memory[position] + relative_pointer] = value;
-          }
-        }
-      );
+      memory[resolvePosition()] = value;
     },
     advance: () => local_instruction_pointer - instruction_pointer + 1
   };
