@@ -2,7 +2,7 @@
 
 const { permutations } = require("../utils");
 
-const IntcodeComputer = require("../day-5/intcode-computer");
+const IntcodeComputer = require("../day-05/intcode-computer");
 
 module.exports = function amplification(program, amplifier_config) {
   const amplifiers = amplifier_config.split(",").map(Number);
