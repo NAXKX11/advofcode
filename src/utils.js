@@ -1,5 +1,6 @@
 const fs = require("fs");
 const { resolve } = require("path");
+const Table = require("cli-table");
 
 module.exports.read = async function read(base, path) {
   return fs.promises.readFile(resolve(base, path), "utf8");
@@ -70,6 +71,10 @@ module.exports.manhatten = function manhatten([x0, y0], [x1, y1]) {
   return Math.abs(x1 - x0) + Math.abs(y1 - y0);
 };
 
+module.exports.distance = function distance([x0, y0], [x1, y1]) {
+  return Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
+};
+
 module.exports.permutations = function permutations(input) {
   if (input.length === 0) {
     return [[]];
@@ -114,4 +119,21 @@ module.exports.perfLogs = function withPerfLogs(cb, message) {
 
     throw err;
   }
+};
+
+function ensureTwoDimensional(input) {
+  if (Array.isArray(input) && Array.isArray(input[0])) {
+    return input;
+  } else if (Array.isArray(input) && !Array.isArray(input[0])) {
+    return [input];
+  } else if (!Array.isArray(input)) {
+    return [[input]];
+  }
+}
+
+module.exports.table = function table(input, options = {}) {
+  input = ensureTwoDimensional(input);
+  const table = new Table(options);
+  table.push(...input);
+  return table.toString();
 };
