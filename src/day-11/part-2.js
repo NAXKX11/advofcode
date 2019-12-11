@@ -35,6 +35,12 @@ module.exports = async function spacePolice(program) {
     direction: DIRECTION.UP
   };
 
+  function move(direction, { x = 0, y = 0 } = {}) {
+    state.direction = direction;
+    position.x += x;
+    position.y += y;
+  }
+
   // Let's see what we get
   computer.output((value, index) => {
     match(index % 2, {
@@ -46,57 +52,36 @@ module.exports = async function spacePolice(program) {
         match(state.direction, {
           [DIRECTION.UP]() {
             match(value, {
-              [TURN.LEFT_90_DEGREES]() {
-                state.direction = DIRECTION.LEFT;
-                position.x -= 1;
-              },
-              [TURN.RIGHT_90_DEGREES]() {
-                state.direction = DIRECTION.RIGHT;
-                position.x += 1;
-              }
+              [TURN.LEFT_90_DEGREES]: () => move(DIRECTION.LEFT, { x: -1 }),
+              [TURN.RIGHT_90_DEGREES]: () => move(DIRECTION.RIGHT, { x: 1 })
             });
           },
           [DIRECTION.DOWN]() {
             match(value, {
-              [TURN.LEFT_90_DEGREES]() {
-                state.direction = DIRECTION.RIGHT;
-                position.x += 1;
-              },
-              [TURN.RIGHT_90_DEGREES]() {
-                state.direction = DIRECTION.LEFT;
-                position.x -= 1;
-              }
+              [TURN.LEFT_90_DEGREES]: () => move(DIRECTION.RIGHT, { x: 1 }),
+              [TURN.RIGHT_90_DEGREES]: () => move(DIRECTION.LEFT, { x: -1 })
             });
           },
           [DIRECTION.LEFT]() {
             match(value, {
-              [TURN.LEFT_90_DEGREES]() {
-                state.direction = DIRECTION.DOWN;
-                position.y += 1;
-              },
-              [TURN.RIGHT_90_DEGREES]() {
-                state.direction = DIRECTION.UP;
-                position.y -= 1;
-              }
+              [TURN.LEFT_90_DEGREES]: () => move(DIRECTION.DOWN, { y: 1 }),
+              [TURN.RIGHT_90_DEGREES]: () => move(DIRECTION.UP, { y: -1 })
             });
           },
           [DIRECTION.RIGHT]() {
             match(value, {
-              [TURN.LEFT_90_DEGREES]() {
-                state.direction = DIRECTION.UP;
-                position.y -= 1;
-              },
-              [TURN.RIGHT_90_DEGREES]() {
-                state.direction = DIRECTION.DOWN;
-                position.y += 1;
-              }
+              [TURN.LEFT_90_DEGREES]: () => move(DIRECTION.UP, { y: -1 }),
+              [TURN.RIGHT_90_DEGREES]: () => move(DIRECTION.DOWN, { y: 1 })
             });
           }
         });
 
         // Give the computer the color input again
+        const pos = point(position.x, position.y);
         computer.input(
-          painted_panels_map.get(point(position.x, position.y)) || COLORS.BLACK
+          painted_panels_map.has(pos)
+            ? painted_panels_map.get(pos)
+            : COLORS.BLACK
         );
       }
     });
