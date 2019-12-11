@@ -49,7 +49,7 @@ function createIntcodeComputer(program = "", debug_options = {}) {
   async function readInput() {
     return input.length > 0
       ? input.shift()
-      : new Promise(emitter.once.bind(IO.IN)).then(readInput);
+      : new Promise(emitter.once.bind(emitter, IO.IN)).then(readInput);
   }
 
   let instruction_pointer = 0;
@@ -68,7 +68,9 @@ function createIntcodeComputer(program = "", debug_options = {}) {
           [CODES.ADDITION]: () => write(readParam() + readParam()),
           [CODES.MULTIPLICATION]: () => write(readParam() * readParam()),
           [CODES.READ]: () => readInput().then(write),
-          [CODES.WRITE]: () => void emitter.emit(IO.OUT, readParam()),
+          [CODES.WRITE]: () => {
+            emitter.emit(IO.OUT, readParam(), output.length);
+          },
           [CODES.JUMP_IF_TRUE]() {
             const param1 = readParam();
             const param2 = readParam();
@@ -116,7 +118,10 @@ function createIntcodeComputer(program = "", debug_options = {}) {
       return IntcodeComputer();
     },
     input(...values) {
-      emitter.emit(IO.IN, [].concat(values).filter(Boolean));
+      emitter.emit(
+        IO.IN,
+        [].concat(values).filter(x => x !== undefined)
+      );
     },
     output(cb) {
       emitter.on(IO.OUT, cb);
