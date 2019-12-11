@@ -1,6 +1,7 @@
 // Day 11: Space Police
 
 const { createIntcodeComputer } = require("../day-09/intcode-computer");
+const { process, border, scale, render } = require("../day-08/part-2");
 const { match, range, table } = require("../utils");
 
 const COLORS = {
@@ -108,23 +109,26 @@ module.exports = async function spacePolice(program) {
   await computer.run();
 
   // What did we draw?
-  return visualize(painted_panels_map);
+  return await visualize(painted_panels_map);
 };
 
 function visualize(map) {
-  return range(5 + 1)
-    .map(columnIdx => {
-      return range(40 + 1)
-        .map(rowIdx => {
-          const position = point(rowIdx, columnIdx);
-          return match(map.has(position) ? map.get(position) : COLORS.BLACK, {
-            [COLORS.BLACK]: () => " ",
-            [COLORS.WHITE]: () => "#"
-          });
-        })
-        .join("");
-    })
-    .join("\n");
+  const width = 40 + 1;
+  const height = 5 + 1;
+  const data = range(height)
+    .map(y =>
+      range(width).map(x => {
+        const position = point(x, y);
+        return map.has(position) ? map.get(position) : COLORS.BLACK;
+      })
+    )
+    .flat(Infinity)
+    .join("");
+
+  return process(data, width, height)
+    .then(border(1))
+    .then(scale(2))
+    .then(render());
 }
 
 function point(x, y) {
