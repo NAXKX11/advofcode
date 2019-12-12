@@ -57,17 +57,17 @@ function calculateMoonState(input, steps = 0) {
         // Compare x
         const diff_x = Math.sign(moon2.position.x - moon1.position.x);
         moon1.velocity.x += diff_x;
-        moon2.velocity.x += diff_x * -1;
+        moon2.velocity.x += -diff_x;
 
         // Compare y
         const diff_y = Math.sign(moon2.position.y - moon1.position.y);
         moon1.velocity.y += diff_y;
-        moon2.velocity.y += diff_y * -1;
+        moon2.velocity.y += -diff_y;
 
         // Compare z
         const diff_z = Math.sign(moon2.position.z - moon1.position.z);
         moon1.velocity.z += diff_z;
-        moon2.velocity.z += diff_z * -1;
+        moon2.velocity.z += -diff_z;
       }
     }
 
