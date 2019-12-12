@@ -137,8 +137,8 @@ function parseOperator(memory, instruction_pointer = 0, relative_pointer = 0) {
   // - param2_mode: 0 | 1
   // - paramn_mode: 0 | 1
   // - opcode: 01 - 99
-  const modes = input.slice(0, input.length - 2);
-  const operator = input.slice(input.length - 2);
+  const modes = input.slice(0, -2);
+  const operator = input.slice(-2);
 
   const param_modes = modes.split("").reverse();
   const operation = `${Number(operator)}`;
