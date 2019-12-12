@@ -137,3 +137,11 @@ module.exports.table = function table(input, options = {}) {
   table.push(...input);
   return table.toString();
 };
+
+module.exports.lcm = function lcm(x, y) {
+  return !x || !y ? 0 : Math.abs((x * y) / module.exports.gcd(x, y));
+};
+
+module.exports.gcd = function gcd(x, y) {
+  return !y ? x : module.exports.gcd(y, x % y);
+};
