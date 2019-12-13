@@ -145,3 +145,7 @@ module.exports.lcm = function lcm(x, y) {
 module.exports.gcd = function gcd(x, y) {
   return !y ? x : module.exports.gcd(y, x % y);
 };
+
+module.exports.sum = function sum(values) {
+  return values.reduce((total, current) => total + current, 0);
+};

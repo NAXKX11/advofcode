@@ -1,6 +1,6 @@
 // Day 12: The N-Body Problem
 
-const { range } = require("../utils");
+const { range, sum } = require("../utils");
 
 // 1. Update velocity by applying gravity
 // 2. Once all velocities have been updated for each moon, apply gravity
@@ -15,10 +15,6 @@ function totalEnergy(input, steps = 0) {
         sum(Object.values(moon.velocity).map(Math.abs))
     );
   }, 0);
-}
-
-function sum(values) {
-  return values.reduce((total, current) => total + current, 0);
 }
 
 function render(input, steps = 0) {
