@@ -149,3 +149,34 @@ module.exports.gcd = function gcd(x, y) {
 module.exports.sum = function sum(values) {
   return values.reduce((total, current) => total + current, 0);
 };
+
+module.exports.binarySearch = function binarySearch(cb, target = min) {
+  let lower_bound = 0;
+  let higher_bound = target;
+  while (lower_bound < higher_bound) {
+    const middle = Math.floor((lower_bound + higher_bound + 1) / 2);
+    if (cb(middle) <= target) {
+      lower_bound = middle;
+    } else {
+      higher_bound = middle - 1;
+    }
+  }
+  return lower_bound;
+};
+
+module.exports.asyncBinarySearch = async function binarySearch(
+  cb,
+  target = min
+) {
+  let lower_bound = 0;
+  let higher_bound = target;
+  while (lower_bound < higher_bound) {
+    const middle = Math.floor((lower_bound + higher_bound + 1) / 2);
+    if ((await cb(middle)) <= target) {
+      lower_bound = middle;
+    } else {
+      higher_bound = middle - 1;
+    }
+  }
+  return lower_bound;
+};
