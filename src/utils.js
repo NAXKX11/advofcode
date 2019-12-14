@@ -6,17 +6,21 @@ module.exports.read = async function read(base, path) {
   return fs.promises.readFile(resolve(base, path), "utf8");
 };
 
-module.exports.match = function match(value, patterns) {
-  const availableKeys = Object.keys(patterns);
-  if (!availableKeys.includes(value.toString())) {
-    throw new Error(
-      `Tried to handle "${value}" but there is no handler defined. Only defined handlers are: ${availableKeys
-        .map(key => `"${key}"`)
-        .join(", ")}.`
-    );
-  }
+module.exports.match = function match(value, patterns, ...args) {
+  try {
+    return patterns[value](...args);
+  } catch (err) {
+    const available_keys = Object.keys(patterns);
+    if (!available_keys.includes(value.toString())) {
+      throw new Error(
+        `Tried to handle "${value}" but there is no handler defined. Only defined handlers are: ${available_keys
+          .map(key => `"${key}"`)
+          .join(", ")}.`
+      );
+    }
 
-  return patterns[value]();
+    throw err;
+  }
 };
 
 class AbortError extends Error {}
