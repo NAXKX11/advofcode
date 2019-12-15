@@ -1,12 +1,11 @@
-// Day 9: Sensor Boost
 const EventEmitter = require("events");
 const { match, abort, aborted } = require("../utils");
 
 const PARAMETER_MODES = { POSITION: 0, IMMEDIATE: 1, RELATIVE: 2 };
-const PROGRAM_MODES = { OUTPUT: 0, MEMORY: 1, BOTH: 2 };
+const PROGRAM_MODES = { OUTPUT: 0, MEMORY: 1, ALL: 2, input: 3 };
 const IO = { IN: "input", OUT: "output" };
 
-const CODES = {
+const OP = {
   HALT: 99,
   ADDITION: 1,
   MULTIPLICATION: 2,
@@ -19,40 +18,42 @@ const CODES = {
   ADJUST_RELATIVE_BASE: 9
 };
 
-class Halt extends Error {}
-
 const PROGRAM_OUTPUT_HANDLERS = {
   [PROGRAM_MODES.OUTPUT](state) {
     return state.output;
   },
+  [PROGRAM_MODES.INPUT](state) {
+    return state.input;
+  },
   [PROGRAM_MODES.MEMORY](state) {
     return state.memory;
   },
-  [PROGRAM_MODES.BOTH](state) {
+  [PROGRAM_MODES.ALL](state) {
     return {
       memory: state.memory,
-      output: state.output
+      output: state.output,
+      input: state.input
     };
   }
 };
 
-const PROGRAM_OPCDOE_HANDLERS = {
-  [CODES.HALT]() {
+const OP_HANDLERS = {
+  [OP.HALT]() {
     abort();
   },
-  [CODES.ADDITION](op) {
-    return op.write(op.readParam() + op.readParam());
+  [OP.ADDITION](op) {
+    op.write(op.readParam() + op.readParam());
   },
-  [CODES.MULTIPLICATION](op) {
-    return op.write(op.readParam() * op.readParam());
+  [OP.MULTIPLICATION](op) {
+    op.write(op.readParam() * op.readParam());
   },
-  [CODES.READ](op, state) {
-    return readInput(state).then(op.write);
+  async [OP.READ](op, state) {
+    op.write(await readInput(state));
   },
-  [CODES.WRITE](op, state) {
+  [OP.WRITE](op, state) {
     state.brain.emit(IO.OUT, op.readParam(), state.output.length);
   },
-  [CODES.JUMP_IF_TRUE](op) {
+  [OP.JUMP_IF_TRUE](op) {
     const param1 = op.readParam();
     const param2 = op.readParam();
 
@@ -60,7 +61,7 @@ const PROGRAM_OPCDOE_HANDLERS = {
       return param2; // Returning the new position
     }
   },
-  [CODES.JUMP_IF_FALSE](op) {
+  [OP.JUMP_IF_FALSE](op) {
     const param1 = op.readParam();
     const param2 = op.readParam();
 
@@ -68,22 +69,22 @@ const PROGRAM_OPCDOE_HANDLERS = {
       return param2; // Returning the new position
     }
   },
-  [CODES.LESS_THAN](op) {
-    return op.write(op.readParam() < op.readParam() ? 1 : 0);
+  [OP.LESS_THAN](op) {
+    op.write(op.readParam() < op.readParam() ? 1 : 0);
   },
-  [CODES.EQUALS](op) {
-    return op.write(op.readParam() === op.readParam() ? 1 : 0);
+  [OP.EQUALS](op) {
+    op.write(op.readParam() === op.readParam() ? 1 : 0);
   },
-  [CODES.ADJUST_RELATIVE_BASE](op, state) {
+  [OP.ADJUST_RELATIVE_BASE](op, state) {
     state.relative_base_pointer += op.readParam();
   }
 };
 
-async function readInput({ input, brain }) {
-  return input.length > 0
-    ? input.shift()
-    : new Promise(brain.once.bind(brain, IO.IN)).then(() =>
-        readInput({ input, brain })
+async function readInput(state) {
+  return state.input.length > 0
+    ? state.input.shift()
+    : new Promise(state.brain.once.bind(state.brain, IO.IN)).then(() =>
+        readInput(state)
       );
 }
 
@@ -120,12 +121,12 @@ function createIntcodeComputer(program = "", debug_options = {}) {
 
         const next_position = await match(
           operator.operation,
-          PROGRAM_OPCDOE_HANDLERS,
+          OP_HANDLERS,
           operator,
           state
         );
 
-        if (next_position) {
+        if (next_position != null) {
           state.instruction_pointer = next_position;
         } else {
           state.instruction_pointer += operator.advance();
@@ -135,6 +136,8 @@ function createIntcodeComputer(program = "", debug_options = {}) {
       if (!aborted(err)) {
         throw err;
       }
+    } finally {
+      state.brain.removeAllListeners();
     }
 
     return match(mode, PROGRAM_OUTPUT_HANDLERS, state);
@@ -145,27 +148,36 @@ function createIntcodeComputer(program = "", debug_options = {}) {
       return IntcodeComputer();
     },
     input(...values) {
-      state.brain.emit(
-        IO.IN,
-        [].concat(values).filter(x => x !== undefined)
-      );
+      const flattened = values.flat(Infinity);
+      if (flattened.some(v => typeof v !== "number")) {
+        throw new Error("Inputs must be of type number");
+      }
+
+      if (flattened.length > 0) {
+        state.brain.emit(IO.IN, flattened);
+      }
     },
     output(cb) {
       state.brain.on(IO.OUT, cb);
-      return () => state.brain.off(IO.OUT);
+      return () => state.brain.off(IO.OUT, cb);
+    },
+
+    // Expose a way to abort the computer from running
+    halt() {
+      return abort();
     }
   };
 }
 
 const OPERATOR_MODE_HANDLERS = {
-  [PARAMETER_MODES.POSITION](position, { memory }) {
-    return memory[position];
+  [PARAMETER_MODES.POSITION](position, state) {
+    return state.memory[position];
   },
   [PARAMETER_MODES.IMMEDIATE](position) {
     return position;
   },
-  [PARAMETER_MODES.RELATIVE](position, { memory, relative_base_pointer }) {
-    return memory[position] + relative_base_pointer;
+  [PARAMETER_MODES.RELATIVE](position, state) {
+    return state.memory[position] + state.relative_base_pointer;
   }
 };
 
@@ -182,8 +194,11 @@ function resolvePosition(operator_state, computer_state) {
   return match(mode, OPERATOR_MODE_HANDLERS, position, computer_state);
 }
 
-function parseOperator(state) {
-  const input = state.memory[state.instruction_pointer];
+function parseOperator(computer_state) {
+  const input = computer_state.memory[computer_state.instruction_pointer];
+  if (typeof input !== "number") {
+    throw new Error(`No no... "${input}" (${typeof input})`);
+  }
 
   const operator_state = {
     operation: input % 100, // Last 3 digits
@@ -191,7 +206,7 @@ function parseOperator(state) {
 
     // Keep track of a local instruction pointer so that we can increase this
     // for our parameters
-    local_instruction_pointer: state.instruction_pointer
+    local_instruction_pointer: computer_state.instruction_pointer
   };
 
   return {
@@ -200,18 +215,24 @@ function parseOperator(state) {
 
     // Expose a set of utils
     readParam() {
-      return state.memory[resolvePosition(operator_state, state)];
+      const value =
+        computer_state.memory[resolvePosition(operator_state, computer_state)];
+
+      return value == null ? 0 : value;
     },
     write(value) {
-      state.memory[resolvePosition(operator_state, state)] = value;
+      computer_state.memory[
+        resolvePosition(operator_state, computer_state)
+      ] = value;
     },
-    advance: () =>
-      operator_state.local_instruction_pointer - state.instruction_pointer + 1
+    advance() {
+      return (
+        operator_state.local_instruction_pointer -
+        computer_state.instruction_pointer +
+        1
+      );
+    }
   };
 }
 
-function halted(err) {
-  return err instanceof Halt;
-}
-
-module.exports = { halted, PROGRAM_MODES, createIntcodeComputer };
+module.exports = { PROGRAM_MODES, createIntcodeComputer };

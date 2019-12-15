@@ -2,23 +2,27 @@
 
 const { permutations } = require("../utils");
 
-const IntcodeComputer = require("../day-05/intcode-computer");
+const { createIntcodeComputer } = require("../intcode/computer");
 
-module.exports = function amplification(program, amplifier_config) {
+module.exports = async function amplification(program, amplifier_config) {
   const amplifiers = amplifier_config.split(",").map(Number);
 
   const configs = permutations(amplifiers);
 
-  return configs.reduce((previous_result, amplifiers) => {
-    const result = calculateAmplifierOutput(program, amplifiers);
+  return await configs.reduce(async (chain, amplifiers) => {
+    const previous_result = await chain;
+    const result = await calculateAmplifierOutput(program, amplifiers);
     return result > previous_result ? result : previous_result;
   }, -Infinity);
 };
 
-function calculateAmplifierOutput(program, amplifiers) {
-  const result = amplifiers.reduce(
-    (previous_result, setting) =>
-      IntcodeComputer(program, [setting, ...previous_result]),
+async function calculateAmplifierOutput(program, amplifiers) {
+  const result = await amplifiers.reduce(
+    async (previous_result, setting) => {
+      const computer = createIntcodeComputer(program);
+      computer.input(setting, await previous_result);
+      return computer.run();
+    },
     [0]
   );
 

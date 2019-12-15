@@ -2,7 +2,7 @@
 
 const { permutations } = require("../utils");
 
-const { createIntcodeComputer, halted } = require("./intcode-computer");
+const { createIntcodeComputer } = require("../intcode/computer");
 
 module.exports = function amplification(program, amplifier_config) {
   const amplifiers = amplifier_config.split(",").map(Number);
@@ -17,53 +17,39 @@ module.exports = function amplification(program, amplifier_config) {
 };
 
 async function calculateAmplifierOutput(program, amplifiers) {
-  try {
-    const [a, b, c, d, e] = amplifiers;
+  const [a, b, c, d, e] = amplifiers;
 
-    const [
-      amplifierA,
-      amplifierB,
-      amplifierC,
-      amplifierD,
-      amplifierE
-    ] = amplifiers.map(() => createIntcodeComputer(program));
+  const [
+    amplifierA,
+    amplifierB,
+    amplifierC,
+    amplifierD,
+    amplifierE
+  ] = amplifiers.map(() => createIntcodeComputer(program));
 
-    // Do the wiring
-    amplifierA.output(amplifierB.input);
-    amplifierB.output(amplifierC.input);
-    amplifierC.output(amplifierD.input);
-    amplifierD.output(amplifierE.input);
-    amplifierE.output(amplifierA.input);
+  // Feed some input
+  amplifierA.input(a, 0);
+  amplifierB.input(b);
+  amplifierC.input(c);
+  amplifierD.input(d);
+  amplifierE.input(e);
 
-    // Feed some input
-    amplifierA.input(a, 0);
-    amplifierB.input(b);
-    amplifierC.input(c);
-    amplifierD.input(d);
-    amplifierE.input(e);
+  // Do the wiring
+  amplifierA.output(value => amplifierB.input(value));
+  amplifierB.output(value => amplifierC.input(value));
+  amplifierC.output(value => amplifierD.input(value));
+  amplifierD.output(value => amplifierE.input(value));
+  amplifierE.output(value => amplifierA.input(value));
 
-    function ignoreHalt(err) {
-      if (halted(err)) {
-        return Promise.resolve();
-      }
+  // Let's run!
+  const values = await Promise.all([
+    amplifierA.run(),
+    amplifierB.run(),
+    amplifierC.run(),
+    amplifierD.run(),
+    amplifierE.run()
+  ]);
 
-      throw err;
-    }
-
-    // Let's run!
-    await Promise.all([
-      amplifierA.run().catch(ignoreHalt),
-      amplifierB.run().catch(ignoreHalt),
-      amplifierC.run().catch(ignoreHalt),
-      amplifierD.run().catch(ignoreHalt),
-      amplifierE.run()
-    ]);
-  } catch (err) {
-    if (halted(err)) {
-      return err.output.slice().pop();
-    }
-
-    // Uh..., error
-    throw err;
-  }
+  // Get the last output of amplifierE
+  return values[values.length - 1].slice().pop();
 }

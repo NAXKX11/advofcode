@@ -1,0 +1,10 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`should be possible to create a computer 1`] = `
+Object {
+  "halt": [Function],
+  "input": [Function],
+  "output": [Function],
+  "run": [Function],
+}
+`;

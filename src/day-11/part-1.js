@@ -1,6 +1,6 @@
 // Day 11: Space Police
 
-const { createIntcodeComputer } = require("../day-09/intcode-computer");
+const { createIntcodeComputer } = require("../intcode/computer");
 const { match } = require("../utils");
 
 const COLORS = {

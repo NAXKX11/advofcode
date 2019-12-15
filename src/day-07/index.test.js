@@ -18,8 +18,8 @@ describe("Part 1", () => {
     ]
   ])(
     'An input of %s with settings of %s requires an output of "%s"',
-    (program, settings, output) => {
-      expect(part1(program, settings)).toEqual(output);
+    async (program, settings, output) => {
+      expect(await part1(program, settings)).toEqual(output);
     }
   );
 
@@ -27,7 +27,7 @@ describe("Part 1", () => {
   it("should produce the correct value for the input data", async () => {
     const data = await read(__dirname, "./data.txt");
 
-    expect(part1(data, "0,1,2,3,4")).toMatchSnapshot();
+    expect(await part1(data, "0,1,2,3,4")).toMatchSnapshot();
   });
 });
 
