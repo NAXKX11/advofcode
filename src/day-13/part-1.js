@@ -22,19 +22,21 @@ module.exports = async function arcadeCabinet(program) {
   const computer = createIntcodeComputer(program);
   const position = { x: 0, y: 0 };
 
+  const ACTION_HANDLERS = {
+    [ACTION.SET_X](value) {
+      position.x = value;
+    },
+    [ACTION.SET_Y](value) {
+      position.y = value;
+    },
+    [ACTION.SET_TILE](value) {
+      painted_tiles.set(point(position.x, position.y), value);
+    }
+  };
+
   // Let's see what we get
   computer.output((value, index) => {
-    match(index % 3, {
-      [ACTION.SET_X]() {
-        position.x = value;
-      },
-      [ACTION.SET_Y]() {
-        position.y = value;
-      },
-      [ACTION.SET_TILE]() {
-        painted_tiles.set(point(position.x, position.y), value);
-      }
-    });
+    match(index % 3, ACTION_HANDLERS, value);
   });
 
   // Run the computer

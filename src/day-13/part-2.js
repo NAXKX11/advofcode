@@ -37,40 +37,46 @@ module.exports = async function arcadeCabinet(program) {
     tmp: { x: 0, y: 0 }
   };
 
+  const DRAW_TILE_HANDLERS = {
+    [TILES.EMPTY]: () => {},
+    [TILES.WALL]: () => {},
+    [TILES.BLOCK]: () => {},
+    [TILES.BALL]() {
+      state.ball.x = state.tmp.x;
+      state.ball.y = state.tmp.y;
+
+      computer.input(Math.sign(state.ball.x - state.paddle.x));
+    },
+    [TILES.PADDLE]() {
+      state.paddle.x = state.tmp.x;
+      state.paddle.y = state.tmp.y;
+    }
+  };
+
+  const DRAW_HANDLERS = {
+    [DRAW.SCORE](value) {
+      state.score = value;
+    },
+    [DRAW.TILE](value) {
+      match(value, DRAW_TILE_HANDLERS);
+    }
+  };
+
+  const ACTION_HANDLERS = {
+    [ACTION.SET_X](value) {
+      state.tmp.x = value;
+    },
+    [ACTION.SET_Y](value) {
+      state.tmp.y = value;
+    },
+    [ACTION.DRAW](value) {
+      match(state.tmp.x === -1 && state.tmp.y === 0, DRAW_HANDLERS, value);
+    }
+  };
+
   // Let's see what we get
   computer.output((value, index) => {
-    match(index % 3, {
-      [ACTION.SET_X]() {
-        state.tmp.x = value;
-      },
-      [ACTION.SET_Y]() {
-        state.tmp.y = value;
-      },
-      [ACTION.DRAW]() {
-        match(state.tmp.x === -1 && state.tmp.y === 0, {
-          [DRAW.SCORE]() {
-            state.score = value;
-          },
-          [DRAW.TILE]() {
-            match(value, {
-              [TILES.EMPTY]: () => {},
-              [TILES.WALL]: () => {},
-              [TILES.BLOCK]: () => {},
-              [TILES.BALL]() {
-                state.ball.x = state.tmp.x;
-                state.ball.y = state.tmp.y;
-
-                computer.input(Math.sign(state.ball.x - state.paddle.x));
-              },
-              [TILES.PADDLE]() {
-                state.paddle.x = state.tmp.x;
-                state.paddle.y = state.tmp.y;
-              }
-            });
-          }
-        });
-      }
-    });
+    match(index % 3, ACTION_HANDLERS, value);
   });
 
   // Run the computer
