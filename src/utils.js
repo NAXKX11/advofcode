@@ -135,6 +135,21 @@ function ensureTwoDimensional(input) {
   }
 }
 
+module.exports.compactTable = function compactTable(input, options = {}) {
+  return module.exports.table(input, {
+    chars: {
+      mid: "",
+      "left-mid": "",
+      "mid-mid": "",
+      "right-mid": "",
+      "top-mid": "─",
+      "bottom-mid": "─",
+      middle: " "
+    },
+    ...options
+  });
+};
+
 module.exports.table = function table(input, options = {}) {
   input = ensureTwoDimensional(input);
   const table = new Table(options);
