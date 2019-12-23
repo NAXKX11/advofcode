@@ -4,6 +4,7 @@ const { match, abort, aborted } = require("../utils");
 const PARAMETER_MODES = { POSITION: 0, IMMEDIATE: 1, RELATIVE: 2 };
 const PROGRAM_MODES = { OUTPUT: 0, MEMORY: 1, ALL: 2, input: 3 };
 const IO = { IN: "input", OUT: "output" };
+const STATE = { IDLE: 0, RUNNING: 1, HALTED: 2 };
 
 const OP = {
   HALT: 99,
@@ -80,20 +81,18 @@ const OP_HANDLERS = {
   }
 };
 
-async function readInput(state) {
-  return state.input.length > 0
-    ? state.input.shift()
-    : new Promise(state.brain.once.bind(state.brain, IO.IN)).then(() =>
-        readInput(state)
-      );
+function readInput(state) {
+  return state.input.length > 0 ? state.input.shift() : state.waitForInput();
 }
 
-function createIntcodeComputer(program = "", debug_options = {}) {
-  const { mode = PROGRAM_MODES.OUTPUT } = debug_options;
+function createIntcodeComputer(program = "", OPTIONS = {}) {
+  const { mode = PROGRAM_MODES.OUTPUT, waitForInput } = OPTIONS;
 
   // Let's create a state bucket where we can store stuff, and make it easy to
   // pass around.
   const state = {
+    state: STATE.IDLE,
+
     // Keep track of the memory
     memory: program.split(",").map(Number),
 
@@ -106,7 +105,16 @@ function createIntcodeComputer(program = "", debug_options = {}) {
     relative_base_pointer: 0,
 
     // Add an event emitter so that we can do some message passing
-    brain: new EventEmitter()
+    brain: new EventEmitter(),
+
+    // Provide a way to wait for input
+    waitForInput:
+      waitForInput !== undefined
+        ? waitForInput
+        : async () => {
+            await new Promise(state.brain.once.bind(state.brain, IO.IN));
+            return await readInput(state);
+          }
   };
 
   // Handle I/O
@@ -116,7 +124,10 @@ function createIntcodeComputer(program = "", debug_options = {}) {
   // The computah
   async function IntcodeComputer() {
     try {
-      while (state.instruction_pointer < state.memory.length) {
+      while (
+        state.instruction_pointer < state.memory.length &&
+        state.state === STATE.RUNNING
+      ) {
         const operator = parseOperator(state);
 
         const next_position = await match(
@@ -145,9 +156,14 @@ function createIntcodeComputer(program = "", debug_options = {}) {
 
   return {
     run() {
+      state.state = STATE.RUNNING;
       return IntcodeComputer();
     },
     input(...values) {
+      if (state.state === STATE.HALTED) {
+        return;
+      }
+
       const flattened = values.flat(Infinity);
       if (flattened.some(v => typeof v !== "number")) {
         throw new Error("Inputs must be of type number");
@@ -158,13 +174,21 @@ function createIntcodeComputer(program = "", debug_options = {}) {
       }
     },
     output(cb) {
+      if (state.state === STATE.HALTED) {
+        return;
+      }
+
       state.brain.on(IO.OUT, cb);
       return () => state.brain.off(IO.OUT, cb);
     },
 
     // Expose a way to abort the computer from running
     halt() {
-      return abort();
+      state.state = STATE.HALTED;
+    },
+
+    get isInputPending() {
+      return state.input.length === 0;
     }
   };
 }
@@ -235,4 +259,14 @@ function parseOperator(computer_state) {
   };
 }
 
-module.exports = { PROGRAM_MODES, createIntcodeComputer };
+function collect(amount, cb) {
+  let collection = [];
+  return value => {
+    collection.push(value);
+    if (collection.length === amount) {
+      cb(...collection.splice(0, amount));
+    }
+  };
+}
+
+module.exports = { PROGRAM_MODES, createIntcodeComputer, collect };
