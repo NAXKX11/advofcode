@@ -53,17 +53,24 @@ describe("Part 1", () => {
   });
 });
 
-describe.skip("Part 2", () => {
+describe("Part 2", () => {
   // Actual test, Part 2
   it("should produce the correct value for the input data", async () => {
     const data = await read(__dirname, "./data.txt");
 
-    const shuffled_deck = part2(
+    const card = part2(
       data,
+
+      // Deck Size
       Number("119_315_717_514_047".replace(/_/g, "")), // HACK TO HAVE SOME _'S
-      Number("101_741_582_076_661".replace(/_/g, "")) // HACK TO HAVE SOME _'S
+
+      // Repititions
+      Number("101_741_582_076_661".replace(/_/g, "")), // HACK TO HAVE SOME _'S
+
+      // Position
+      2020
     );
 
-    expect(shuffled_deck[2020]).toMatchSnapshot();
+    expect(card).toMatchSnapshot();
   });
 });

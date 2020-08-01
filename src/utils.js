@@ -169,7 +169,7 @@ module.exports.sum = function sum(values) {
   return values.reduce((total, current) => total + current, 0);
 };
 
-module.exports.binarySearch = function binarySearch(cb, target = min) {
+module.exports.binarySearch = function binarySearch(cb, target = 0) {
   let lower_bound = 0;
   let higher_bound = target;
   while (lower_bound < higher_bound) {
@@ -183,10 +183,7 @@ module.exports.binarySearch = function binarySearch(cb, target = min) {
   return lower_bound;
 };
 
-module.exports.asyncBinarySearch = async function binarySearch(
-  cb,
-  target = min
-) {
+module.exports.asyncBinarySearch = async function binarySearch(cb, target = 0) {
   let lower_bound = 0;
   let higher_bound = target;
   while (lower_bound < higher_bound) {
